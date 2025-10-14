@@ -1,5 +1,5 @@
-import { getElementLocatorSelectors } from '@vitest/browser/utils';
-import type { RenderOptions, RenderResult } from './types';
+import { getElementLocatorSelectors } from "@vitest/browser/utils";
+import type { RenderOptions, RenderResult } from "./types";
 
 const mountedContainers = new Set<HTMLElement>();
 
@@ -26,7 +26,7 @@ function setupContainer(
 	}
 
 	if (!container) {
-		container = document.createElement('div');
+		container = document.createElement("div");
 		baseElement.appendChild(container);
 	}
 
@@ -43,7 +43,7 @@ function createRenderResult(
 	mountedContainers.add(container);
 
 	const unmount = () => {
-		container.innerHTML = '';
+		container.innerHTML = "";
 		mountedContainers.delete(container);
 		if (container.parentNode === document.body) {
 			document.body.removeChild(container);
@@ -87,7 +87,7 @@ export function injectHTML(
  */
 export async function cleanup(): Promise<void> {
 	mountedContainers.forEach((container) => {
-		container.innerHTML = '';
+		container.innerHTML = "";
 		if (container.parentNode === document.body) {
 			document.body.removeChild(container);
 		}

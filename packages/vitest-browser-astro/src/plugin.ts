@@ -1,11 +1,16 @@
-import { resolve } from 'node:path';
-import type { Plugin } from 'vite';
-import type { BrowserCommand } from 'vitest/node';
-import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import { parse } from 'devalue';
+import { resolve } from "node:path";
+import type { Plugin } from "vite";
+import type { BrowserCommand } from "vitest/node";
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
+import { parse } from "devalue";
 
 type RenderAstroCommand = BrowserCommand<
-	[componentPath: string, componentName: string, serializedProps?: string, slots?: Record<string, string>]
+	[
+		componentPath: string,
+		componentName: string,
+		serializedProps?: string,
+		slots?: Record<string, string>,
+	]
 >;
 
 /**
@@ -23,14 +28,16 @@ const renderAstroCommand: RenderAstroCommand = async (
 
 	// Use Vitest's Vite server which already has Astro configured
 	const viteServer = ctx.project.vite;
-	const module = await viteServer.ssrLoadModule(absolutePath);
 
-	// Get the component (default export or named export)
-	const Component = module.default || module[componentName];
+	// Load the component directly (astro-head-inject will be auto-injected during SSR)
+	const componentModule = await viteServer.ssrLoadModule(absolutePath);
+
+	// Get the component
+	const Component = componentModule.default || componentModule[componentName];
 
 	if (!Component) {
 		throw new Error(
-			`Component "${componentName}" not found in ${absolutePath}. Available exports: ${Object.keys(module).join(', ')}`,
+			`Component not found for ${absolutePath}. Available exports: ${Object.keys(componentModule).join(", ")}`,
 		);
 	}
 
@@ -40,11 +47,11 @@ const renderAstroCommand: RenderAstroCommand = async (
 	// Create Astro container for rendering
 	const container = await AstroContainer.create();
 
-	// Render the component to HTML string
+	// Render the component (which will include scripts due to astro-head-inject)
 	const html = await container.renderToString(Component, {
 		props,
 		slots,
-		request: new Request('http://localhost:3000/test'),
+		request: new Request("http://localhost:3000/test"),
 	});
 
 	return { html };
@@ -52,37 +59,53 @@ const renderAstroCommand: RenderAstroCommand = async (
 
 /**
  * Vite plugin that intercepts .astro imports and provides browser command
+ * Returns array of two plugins: one for pre-processing, one for post-processing
  */
-export function astroRenderer(): Plugin {
-	return {
-		name: 'vitest:astro-renderer',
-		enforce: 'post',
+export function astroRenderer(): Plugin[] {
+	return [
+		{
+			name: "vitest:astro-renderer:pre",
+			enforce: "pre",
 
-		config() {
-			return {
-				test: {
-					browser: {
-						commands: {
-							renderAstro: renderAstroCommand,
+			async transform(code, id, options) {
+				// For SSR loads of .astro files, inject astro-head-inject comment at the top
+				if (id.endsWith(".astro") && options?.ssr) {
+					// Add the comment at the very top of the compiled JS
+					return `// astro-head-inject\n${code}`;
+				}
+				return null;
+			},
+		},
+		{
+			name: "vitest:astro-renderer",
+			enforce: "post",
+
+			config() {
+				return {
+					test: {
+						browser: {
+							commands: {
+								renderAstro: renderAstroCommand,
+							},
 						},
 					},
-				},
-			};
-		},
+				};
+			},
 
-		async transform(code, id, options) {
-			// Only intercept browser imports of .astro files (after Astro has processed SSR)
-			if (id.endsWith('.astro') && !options?.ssr) {
-				// Replace entire transformed code with metadata object
-				return `
+			async transform(_code, id, options) {
+				// Only intercept browser imports of .astro files (after Astro has processed them)
+				if (id.endsWith(".astro") && !options?.ssr) {
+					// Replace entire transformed code with metadata object
+					return `
 export default {
 	__astroComponent: true,
 	__path: ${JSON.stringify(id)},
 	__name: "default",
 };
-				`.trim();
-			}
-			return null;
+					`.trim();
+				}
+				return null;
+			},
 		},
-	};
+	];
 }

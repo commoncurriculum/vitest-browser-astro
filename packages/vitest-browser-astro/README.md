@@ -33,16 +33,16 @@ yarn add -D vitest-browser-astro @vitest/browser playwright
 Create a `vitest.config.ts` in your Astro project:
 
 ```ts
-import { getViteConfig } from 'astro/config';
-import { astroRenderer } from 'vitest-browser-astro/plugin';
+import { getViteConfig } from "astro/config";
+import { astroRenderer } from "vitest-browser-astro/plugin";
 
 export default getViteConfig({
 	plugins: [astroRenderer()],
 	test: {
 		browser: {
 			enabled: true,
-			name: 'chromium',
-			provider: 'playwright',
+			name: "chromium",
+			provider: "playwright",
 			headless: true,
 		},
 	},
@@ -53,20 +53,22 @@ export default getViteConfig({
 
 ```ts
 // src/components/Card.test.ts
-import { render } from 'vitest-browser-astro';
-import { expect, test } from 'vitest';
-import Card from './Card.astro';
+import { render } from "vitest-browser-astro";
+import { expect, test } from "vitest";
+import Card from "./Card.astro";
 
-test('renders card with title and content', async () => {
+test("renders card with title and content", async () => {
 	const screen = await render(Card, {
 		props: {
-			title: 'Hello World',
-			content: 'This is a test card',
+			title: "Hello World",
+			content: "This is a test card",
 		},
 	});
 
-	await expect.element(screen.getByText('Hello World')).toBeVisible();
-	await expect.element(screen.getByText('This is a test card')).toBeInTheDocument();
+	await expect.element(screen.getByText("Hello World")).toBeVisible();
+	await expect
+		.element(screen.getByText("This is a test card"))
+		.toBeInTheDocument();
 });
 ```
 
@@ -112,40 +114,42 @@ Removes all rendered components from the DOM. Automatically called between tests
 ### Testing with Props
 
 ```ts
-import { render } from 'vitest-browser-astro';
-import { expect, test } from 'vitest';
-import Button from './Button.astro';
+import { render } from "vitest-browser-astro";
+import { expect, test } from "vitest";
+import Button from "./Button.astro";
 
-test('button shows correct label', async () => {
+test("button shows correct label", async () => {
 	const screen = await render(Button, {
 		props: {
-			label: 'Click me',
-			variant: 'primary',
+			label: "Click me",
+			variant: "primary",
 		},
 	});
 
-	const button = screen.getByRole('button');
-	await expect.element(button).toHaveTextContent('Click me');
-	await expect.element(button).toHaveClass('btn-primary');
+	const button = screen.getByRole("button");
+	await expect.element(button).toHaveTextContent("Click me");
+	await expect.element(button).toHaveClass("btn-primary");
 });
 ```
 
 ### Testing with Slots
 
 ```ts
-import { render } from 'vitest-browser-astro';
-import { expect, test } from 'vitest';
-import Card from './Card.astro';
+import { render } from "vitest-browser-astro";
+import { expect, test } from "vitest";
+import Card from "./Card.astro";
 
-test('renders slot content', async () => {
+test("renders slot content", async () => {
 	const screen = await render(Card, {
-		props: { title: 'My Card' },
+		props: { title: "My Card" },
 		slots: {
-			default: '<p>Slot content here</p>',
+			default: "<p>Slot content here</p>",
 		},
 	});
 
-	await expect.element(screen.getByText('Slot content here')).toBeInTheDocument();
+	await expect
+		.element(screen.getByText("Slot content here"))
+		.toBeInTheDocument();
 });
 ```
 
@@ -154,16 +158,16 @@ test('renders slot content', async () => {
 Props are automatically serialized using [`devalue`](https://github.com/rich-harris/devalue), so you can pass Dates, RegExps, Maps, Sets, and other complex types:
 
 ```ts
-import { render } from 'vitest-browser-astro';
-import { expect, test } from 'vitest';
-import BlogPost from './BlogPost.astro';
+import { render } from "vitest-browser-astro";
+import { expect, test } from "vitest";
+import BlogPost from "./BlogPost.astro";
 
-test('formats date correctly', async () => {
+test("formats date correctly", async () => {
 	const screen = await render(BlogPost, {
 		props: {
-			title: 'My Post',
-			publishedAt: new Date('2024-01-01T00:00:00Z'),
-			tags: ['astro', 'testing'],
+			title: "My Post",
+			publishedAt: new Date("2024-01-01T00:00:00Z"),
+			tags: ["astro", "testing"],
 		},
 	});
 
@@ -176,21 +180,21 @@ test('formats date correctly', async () => {
 Use Vitest's browser context to simulate user interactions:
 
 ```ts
-import { render } from 'vitest-browser-astro';
-import { expect, test } from 'vitest';
-import { userEvent } from '@vitest/browser/context';
-import Counter from './Counter.astro';
+import { render } from "vitest-browser-astro";
+import { expect, test } from "vitest";
+import { userEvent } from "@vitest/browser/context";
+import Counter from "./Counter.astro";
 
-test('clicking button increments counter', async () => {
+test("clicking button increments counter", async () => {
 	const screen = await render(Counter);
 
-	const button = screen.getByRole('button');
-	const count = screen.getByTestId('count');
+	const button = screen.getByRole("button");
+	const count = screen.getByTestId("count");
 
-	await expect.element(count).toHaveTextContent('0');
+	await expect.element(count).toHaveTextContent("0");
 
 	await userEvent.click(button);
-	await expect.element(count).toHaveTextContent('1');
+	await expect.element(count).toHaveTextContent("1");
 });
 ```
 
@@ -199,12 +203,12 @@ test('clicking button increments counter', async () => {
 By default, `cleanup()` runs automatically between tests. You can also call it manually:
 
 ```ts
-import { render, cleanup } from 'vitest-browser-astro';
-import { test } from 'vitest';
-import Card from './Card.astro';
+import { render, cleanup } from "vitest-browser-astro";
+import { test } from "vitest";
+import Card from "./Card.astro";
 
-test('manual cleanup', async () => {
-	const screen = await render(Card, { props: { title: 'Test' } });
+test("manual cleanup", async () => {
+	const screen = await render(Card, { props: { title: "Test" } });
 
 	// Do something...
 
@@ -227,16 +231,16 @@ test('manual cleanup', async () => {
 The recommended setup uses `getViteConfig()` from Astro to automatically load all Astro plugins:
 
 ```ts
-import { getViteConfig } from 'astro/config';
-import { astroRenderer } from 'vitest-browser-astro/plugin';
+import { getViteConfig } from "astro/config";
+import { astroRenderer } from "vitest-browser-astro/plugin";
 
 export default getViteConfig({
 	plugins: [astroRenderer()],
 	test: {
 		browser: {
 			enabled: true,
-			name: 'chromium',
-			provider: 'playwright',
+			name: "chromium",
+			provider: "playwright",
 		},
 	},
 });
@@ -251,8 +255,8 @@ export default getViteConfig({
 	test: {
 		browser: {
 			enabled: true,
-			name: 'chromium', // or 'firefox', 'webkit'
-			provider: 'playwright',
+			name: "chromium", // or 'firefox', 'webkit'
+			provider: "playwright",
 			headless: true,
 			screenshotFailures: false,
 		},
@@ -267,8 +271,8 @@ export default getViteConfig({
 	test: {
 		browser: {
 			enabled: true,
-			name: 'chrome',
-			provider: 'webdriverio',
+			name: "chrome",
+			provider: "webdriverio",
 		},
 	},
 });
@@ -279,11 +283,11 @@ export default getViteConfig({
 The library includes full TypeScript support. Your `.astro` imports will have proper types:
 
 ```ts
-import Card from './Card.astro'; // ✅ Typed as AstroComponentFactory
+import Card from "./Card.astro"; // ✅ Typed as AstroComponentFactory
 
 const screen = await render(Card, {
 	props: {
-		title: 'Hello', // ✅ Type-checked against Card's Props
+		title: "Hello", // ✅ Type-checked against Card's Props
 	},
 });
 ```

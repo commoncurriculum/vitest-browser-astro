@@ -1,0 +1,38 @@
+---
+interface Props {
+	initialValue?: number;
+}
+
+const { initialValue = 0 } = Astro.props;
+---
+
+<div class="regular-script" data-testid="regular-script">
+	<p data-testid="value">{initialValue}</p>
+	<button data-testid="double">Double</button>
+</div>
+
+<script>
+	// Regular script without is:inline
+	document.querySelectorAll('[data-testid="regular-script"]').forEach((container) => {
+		const valueDisplay = container.querySelector('[data-testid="value"]');
+		const doubleBtn = container.querySelector('[data-testid="double"]');
+
+		if (!valueDisplay || !doubleBtn) return;
+
+		let value = parseInt(valueDisplay.textContent || '0', 10);
+
+		doubleBtn.addEventListener('click', () => {
+			value = value * 2;
+			valueDisplay.textContent = String(value);
+		});
+	});
+</script>
+
+<style>
+	.regular-script {
+		padding: 1rem;
+		border: 2px solid #666;
+		border-radius: 8px;
+		display: inline-block;
+	}
+</style>

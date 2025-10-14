@@ -26,107 +26,114 @@ Test File (Browser)
 ### Three Core Components
 
 #### 1. **Vite Plugin** (`src/plugin.ts`)
+
 Intercepts `.astro` file imports and replaces them with metadata objects:
 
 **What it does:**
+
 - Intercepts any `.astro` file import using Vite's `load` hook
 - Replaces the module with a metadata object containing file path and export name
 - No AST parsing needed - just module interception
 - Simple and robust - works with any way of calling `render()`
 
 **Key Transform Example:**
+
 ```ts
 // Test file (what developer writes):
-import Card from '../components/Card.astro';
+import Card from "../components/Card.astro";
 const result = await render(Card, { props: { title: "Test" } });
 
 // What the plugin generates for the Card import:
 export default {
-  __astroComponent: true,
-  __path: '/absolute/path/to/Card.astro',
-  __name: 'default',
+	__astroComponent: true,
+	__path: "/absolute/path/to/Card.astro",
+	__name: "default",
 };
 
 // render() just reads the metadata and calls the browser command:
 async function render(component, options) {
-  if (!component.__astroComponent) {
-    throw new Error('Not an Astro component');
-  }
-  const { html } = await commands.renderAstro(
-    component.__path,
-    component.__name,
-    options.props,
-    options.slots
-  );
-  return injectHTML(html);
+	if (!component.__astroComponent) {
+		throw new Error("Not an Astro component");
+	}
+	const { html } = await commands.renderAstro(
+		component.__path,
+		component.__name,
+		options.props,
+		options.slots,
+	);
+	return injectHTML(html);
 }
 ```
 
 #### 2. **Browser Commands** (`src/plugin.ts` - Node side)
+
 Vitest browser commands run in Node.js but can be called from browser test code:
 
 **Command: `renderAstro`**
+
 ```ts
 async function renderAstroCommand(
-  ctx: BrowserCommandContext,
-  componentPath: string,
-  componentName: string,
-  props?: Record<string, unknown>,
-  slots?: Record<string, string>
+	ctx: BrowserCommandContext,
+	componentPath: string,
+	componentName: string,
+	props?: Record<string, unknown>,
+	slots?: Record<string, string>,
 ) {
-  // 1. Resolve absolute path
-  const absolutePath = resolve(process.cwd(), componentPath);
+	// 1. Resolve absolute path
+	const absolutePath = resolve(process.cwd(), componentPath);
 
-  // 2. Load component using Vite SSR
-  const module = await ctx.project.vite.ssrLoadModule(absolutePath);
-  const Component = module.default || module[componentName];
+	// 2. Load component using Vite SSR
+	const module = await ctx.project.vite.ssrLoadModule(absolutePath);
+	const Component = module.default || module[componentName];
 
-  // 3. Create Astro Container with renderers
-  const container = await experimental_AstroContainer.create({
-    renderers: await loadRenderers([
-      // Auto-detect from project config
-    ])
-  });
+	// 3. Create Astro Container with renderers
+	const container = await experimental_AstroContainer.create({
+		renderers: await loadRenderers([
+			// Auto-detect from project config
+		]),
+	});
 
-  // 4. Render with Container API
-  const html = await container.renderToString(Component, {
-    props,
-    slots,
-    request: new Request('http://localhost:3000/test'),
-  });
+	// 4. Render with Container API
+	const html = await container.renderToString(Component, {
+		props,
+		slots,
+		request: new Request("http://localhost:3000/test"),
+	});
 
-  return { html };
+	return { html };
 }
 ```
 
 **Why this works:**
+
 - Runs in Node.js context (has access to file system, Container API)
 - Has access to `ctx.project.vite` for SSR module loading
 - Can use Astro Container API which only works in Node
 - Returns serializable data (HTML string) back to browser
 
 #### 3. **Pure Rendering Functions** (`src/pure.ts`)
+
 Browser-side utilities that run after the HTML arrives:
 
 ```ts
 export function injectHTML(
-  html: string,
-  options?: RenderOptions
+	html: string,
+	options?: RenderOptions,
 ): RenderResult {
-  // 1. Create container in DOM
-  const container = document.createElement('div');
-  document.body.appendChild(container);
+	// 1. Create container in DOM
+	const container = document.createElement("div");
+	document.body.appendChild(container);
 
-  // 2. Inject HTML (preserving scripts for hydration)
-  setHTMLWithScripts(container, html);
+	// 2. Inject HTML (preserving scripts for hydration)
+	setHTMLWithScripts(container, html);
 
-  // 3. Return result with Vitest locators
-  return {
-    container,
-    baseElement: document.body,
-    unmount: () => container.remove(),
-    ...getElementLocatorSelectors(container),
-  };
+	// 3. Return result with Vitest locators
+	return {
+		container,
+		baseElement: document.body,
+		unmount: () => container.remove(),
+		...getElementLocatorSelectors(container),
+	};
 }
 ```
 
@@ -135,41 +142,41 @@ export function injectHTML(
 #### Simple API (for developers writing tests)
 
 ```ts
-import { render } from 'vitest-browser-astro';
-import Card from '../components/Card.astro';
-import Button from '../components/Button.astro';
+import { render } from "vitest-browser-astro";
+import Card from "../components/Card.astro";
+import Button from "../components/Button.astro";
 
-test('renders card with title', async () => {
-  const screen = await render(Card, {
-    props: { title: 'Hello World' },
-    slots: {
-      default: await render(Button, {
-        props: { text: 'Click me' }
-      })
-    }
-  });
+test("renders card with title", async () => {
+	const screen = await render(Card, {
+		props: { title: "Hello World" },
+		slots: {
+			default: await render(Button, {
+				props: { text: "Click me" },
+			}),
+		},
+	});
 
-  await expect.element(screen.getByText('Hello World')).toBeVisible();
+	await expect.element(screen.getByText("Hello World")).toBeVisible();
 });
 ```
 
 #### Configuration (in vitest.config.ts)
 
 ```ts
-import { defineConfig } from 'vitest/config';
-import { astroRenderer } from 'vitest-browser-astro/plugin';
+import { defineConfig } from "vitest/config";
+import { astroRenderer } from "vitest-browser-astro/plugin";
 
 export default defineConfig({
-  plugins: [
-    astroRenderer(), // Must be first!
-  ],
-  test: {
-    browser: {
-      enabled: true,
-      name: 'chromium',
-      provider: 'playwright',
-    },
-  },
+	plugins: [
+		astroRenderer(), // Must be first!
+	],
+	test: {
+		browser: {
+			enabled: true,
+			name: "chromium",
+			provider: "playwright",
+		},
+	},
 });
 ```
 
@@ -180,29 +187,31 @@ export default defineConfig({
 **Problem:** Test file imports `Card.astro`, but we need to pass the file path to Node.
 
 **Solution:** Use Vite's `load` hook to intercept `.astro` imports:
+
 ```ts
 export function astroRenderer() {
-  return {
-    name: 'vitest:astro-renderer',
-    enforce: 'pre',
+	return {
+		name: "vitest:astro-renderer",
+		enforce: "pre",
 
-    async load(id) {
-      if (!id.endsWith('.astro')) return null;
+		async load(id) {
+			if (!id.endsWith(".astro")) return null;
 
-      // Replace the entire module with metadata
-      return `
+			// Replace the entire module with metadata
+			return `
         export default {
           __astroComponent: true,
           __path: ${JSON.stringify(id)},
           __name: 'default',
         };
       `;
-    },
-  };
+		},
+	};
 }
 ```
 
 This approach is:
+
 - **Simpler** - no AST parsing needed
 - **More robust** - works regardless of how you use the import
 - **Natural** - similar to how Vite handles assets, CSS modules, etc.
@@ -213,11 +222,14 @@ This approach is:
 **Problem:** Component defined in test file itself:
 
 ```ts
-const TestCard = defineComponent({ /* ... */ });
+const TestCard = defineComponent({
+	/* ... */
+});
 await render(TestCard, {});
 ```
 
 **Solution:** Similar to vitest-browser-qwik:
+
 1. Create temporary file with component exported
 2. Load that temp file with ssrLoadModule
 3. Clean up temp file after render
@@ -228,15 +240,18 @@ await render(TestCard, {});
 **Problem:** Astro component contains `<Counter client:load />` (React)
 
 **Solution:**
+
 1. Auto-detect renderers from Astro config
 2. Load renderers into Container:
+
 ```ts
-import { loadRenderers } from 'astro:container';
-import { getContainerRenderer as reactRenderer } from '@astrojs/react';
+import { loadRenderers } from "astro:container";
+import { getContainerRenderer as reactRenderer } from "@astrojs/react";
 
 const renderers = await loadRenderers([reactRenderer()]);
 const container = await experimental_AstroContainer.create({ renderers });
 ```
+
 3. Rendered HTML includes hydration scripts
 4. `setHTMLWithScripts()` ensures scripts execute in browser
 
@@ -247,11 +262,13 @@ const container = await experimental_AstroContainer.create({ renderers });
 **Solution:** Follow Astro's serialization rules exactly (same as hydrated component props):
 
 **Supported types:**
+
 - plain object, `number`, `string`, `Array`
 - `Map`, `Set`, `RegExp`, `Date`, `BigInt`, `URL`
 - `Uint8Array`, `Uint16Array`, `Uint32Array`, `Infinity`
 
 **NOT supported:**
+
 - functions (cannot be serialized)
 
 This matches Astro's own limitations for `client:*` components, so it's a natural constraint:
@@ -259,21 +276,21 @@ This matches Astro's own limitations for `client:*` components, so it's a natura
 ```ts
 // ✅ Supported:
 render(Card, {
-  props: {
-    title: 'Hello',
-    count: 42,
-    tags: ['astro', 'vitest'],
-    createdAt: new Date(),
-    config: { enabled: true }
-  }
-})
+	props: {
+		title: "Hello",
+		count: 42,
+		tags: ["astro", "vitest"],
+		createdAt: new Date(),
+		config: { enabled: true },
+	},
+});
 
 // ❌ NOT supported (same as Astro):
 render(Card, {
-  props: {
-    onClick: () => alert('hi')  // Functions can't serialize
-  }
-})
+	props: {
+		onClick: () => alert("hi"), // Functions can't serialize
+	},
+});
 ```
 
 For server-only behavior (like event handlers), users should use inline `<script>` tags in their Astro components, just like they do in regular Astro development.
@@ -281,6 +298,7 @@ For server-only behavior (like event handlers), users should use inline `<script
 ## Implementation Plan
 
 ### Phase 1: Basic Rendering (MVP)
+
 - [ ] Create Vite plugin skeleton
 - [ ] Implement basic `render()` transform for imported components
 - [ ] Implement `renderAstro` browser command
@@ -289,6 +307,7 @@ For server-only behavior (like event handlers), users should use inline `<script
 - [ ] Manual testing with simple Astro component
 
 ### Phase 2: Full Feature Set
+
 - [ ] Support slots (default and named)
 - [ ] Handle local component definitions
 - [ ] Complex prop types (functions, objects)
@@ -297,6 +316,7 @@ For server-only behavior (like event handlers), users should use inline `<script
 - [ ] Cleanup and unmount lifecycle
 
 ### Phase 3: DX Improvements
+
 - [ ] TypeScript types for all APIs
 - [ ] Error messages with helpful context
 - [ ] Support for Astro.request, Astro.params, Astro.locals
@@ -304,6 +324,7 @@ For server-only behavior (like event handlers), users should use inline `<script
 - [ ] Integration tests
 
 ### Phase 4: Advanced Features
+
 - [ ] `renderToString()` for static HTML assertions
 - [ ] Support for testing with different viewport sizes
 - [ ] Snapshot testing integration
@@ -328,14 +349,14 @@ packages/vitest-browser-astro/
 
 ```json
 {
-  "dependencies": {
-    "@vitest/browser": "^3.x"
-  },
-  "peerDependencies": {
-    "astro": "^5.x",
-    "vitest": "^3.x",
-    "vite": "^6.x"
-  }
+	"dependencies": {
+		"@vitest/browser": "^3.x"
+	},
+	"peerDependencies": {
+		"astro": "^5.x",
+		"vitest": "^3.x",
+		"vite": "^6.x"
+	}
 }
 ```
 

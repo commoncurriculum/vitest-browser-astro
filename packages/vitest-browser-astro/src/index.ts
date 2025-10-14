@@ -1,15 +1,23 @@
-import { commands } from '@vitest/browser/context';
-import { beforeEach } from 'vitest';
-import { stringify } from 'devalue';
-import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
-import { cleanup, injectHTML } from './pure';
-import type { AstroComponentMetadata, RenderOptions, RenderResult } from './types';
+import { commands } from "@vitest/browser/context";
+import { beforeEach } from "vitest";
+import { stringify } from "devalue";
+import type { AstroComponentFactory } from "astro/runtime/server/index.js";
+import { cleanup, injectHTML } from "./pure";
+import type {
+	AstroComponentMetadata,
+	RenderOptions,
+	RenderResult,
+} from "./types";
 
 // Export types
-export type { AstroComponentMetadata, RenderOptions, RenderResult } from './types';
+export type {
+	AstroComponentMetadata,
+	RenderOptions,
+	RenderResult,
+} from "./types";
 
 // Export utilities
-export { cleanup, injectHTML } from './pure';
+export { cleanup, injectHTML } from "./pure";
 
 /**
  * Renders an Astro component in the browser using Vitest browser mode
@@ -41,7 +49,7 @@ export async function render(
 	// Validate that this is an Astro component metadata object
 	if (!metadata || !metadata.__astroComponent) {
 		throw new Error(
-			'Not an Astro component. Make sure you imported an .astro file and the vitest-browser-astro plugin is configured.',
+			"Not an Astro component. Make sure you imported an .astro file and the vitest-browser-astro plugin is configured.",
 		);
 	}
 
@@ -69,7 +77,7 @@ beforeEach(async () => {
 });
 
 // Extend Vitest browser context types
-declare module '@vitest/browser/context' {
+declare module "@vitest/browser/context" {
 	interface BrowserCommands {
 		renderAstro: (
 			componentPath: string,

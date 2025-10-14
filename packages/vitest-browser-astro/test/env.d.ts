@@ -1,7 +1,7 @@
 /// <reference types="astro/client" />
 
 // Allow importing .astro files in test files
-declare module '*.astro' {
+declare module "*.astro" {
 	const component: {
 		__astroComponent: true;
 		__path: string;

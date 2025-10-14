@@ -1,0 +1,82 @@
+---
+interface Props {
+	initialCount?: number;
+}
+
+const { initialCount = 0 } = Astro.props;
+---
+
+<div class="counter" data-testid="counter">
+	<p data-testid="count">{initialCount}</p>
+	<button data-testid="increment">Increment</button>
+	<button data-testid="decrement">Decrement</button>
+	<button data-testid="reset">Reset</button>
+</div>
+
+<script>
+	// This script runs on every instance of the Counter component
+	const counters = document.querySelectorAll('[data-testid="counter"]');
+
+	counters.forEach((counter) => {
+		const countDisplay = counter.querySelector('[data-testid="count"]');
+		const incrementBtn = counter.querySelector('[data-testid="increment"]');
+		const decrementBtn = counter.querySelector('[data-testid="decrement"]');
+		const resetBtn = counter.querySelector('[data-testid="reset"]');
+
+		if (!countDisplay || !incrementBtn || !decrementBtn || !resetBtn) return;
+
+		let count = parseInt(countDisplay.textContent || '0', 10);
+		const initialCount = count;
+
+		incrementBtn.addEventListener('click', () => {
+			count++;
+			countDisplay.textContent = String(count);
+		});
+
+		decrementBtn.addEventListener('click', () => {
+			count--;
+			countDisplay.textContent = String(count);
+		});
+
+		resetBtn.addEventListener('click', () => {
+			count = initialCount;
+			countDisplay.textContent = String(count);
+		});
+
+		// Mark as initialized so tests can wait for this
+		counter.setAttribute('data-initialized', 'true');
+	});
+</script>
+
+<style>
+	.counter {
+		padding: 1rem;
+		border: 2px solid #333;
+		border-radius: 8px;
+		display: inline-block;
+	}
+
+	p {
+		font-size: 2rem;
+		font-weight: bold;
+		margin: 0 0 1rem 0;
+		text-align: center;
+	}
+
+	button {
+		margin: 0.25rem;
+		padding: 0.5rem 1rem;
+		border: 1px solid #666;
+		border-radius: 4px;
+		background: #f0f0f0;
+		cursor: pointer;
+	}
+
+	button:hover {
+		background: #e0e0e0;
+	}
+
+	button:active {
+		background: #d0d0d0;
+	}
+</style>

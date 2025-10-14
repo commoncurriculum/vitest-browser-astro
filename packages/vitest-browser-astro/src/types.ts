@@ -1,5 +1,5 @@
-import type { Locator, LocatorSelectors } from '@vitest/browser/context';
-import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+import type { Locator, LocatorSelectors } from "@vitest/browser/context";
+import type { AstroComponentFactory } from "astro/runtime/server/index.js";
 
 /**
  * Metadata object that replaces .astro imports in browser context

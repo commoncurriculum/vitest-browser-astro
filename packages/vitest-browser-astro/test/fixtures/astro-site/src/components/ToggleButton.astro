@@ -1,0 +1,73 @@
+---
+interface Props {
+	label?: string;
+	defaultState?: boolean;
+}
+
+const { label = 'Toggle', defaultState = false } = Astro.props;
+---
+
+<div class="toggle-container" data-testid="toggle-container">
+	<button
+		class:list={['toggle-btn', { active: defaultState }]}
+		data-testid="toggle-button"
+		aria-pressed={defaultState}
+	>
+		{label}
+	</button>
+	<p data-testid="toggle-state">{defaultState ? 'ON' : 'OFF'}</p>
+</div>
+
+<script>
+	document.querySelectorAll('[data-testid="toggle-button"]').forEach((button) => {
+		const container = button.closest('[data-testid="toggle-container"]');
+		const stateDisplay = container?.querySelector('[data-testid="toggle-state"]');
+
+		if (!stateDisplay) return;
+
+		let isActive = button.classList.contains('active');
+
+		button.addEventListener('click', () => {
+			isActive = !isActive;
+			button.classList.toggle('active');
+			button.setAttribute('aria-pressed', String(isActive));
+			stateDisplay.textContent = isActive ? 'ON' : 'OFF';
+		});
+	});
+</script>
+
+<style>
+	.toggle-container {
+		display: inline-flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.toggle-btn {
+		padding: 0.75rem 1.5rem;
+		border: 2px solid #666;
+		border-radius: 8px;
+		background: #f5f5f5;
+		color: #333;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.toggle-btn.active {
+		background: #4caf50;
+		color: white;
+		border-color: #4caf50;
+	}
+
+	.toggle-btn:hover {
+		transform: scale(1.05);
+	}
+
+	p {
+		margin: 0;
+		font-weight: bold;
+		font-size: 1.25rem;
+		min-width: 3rem;
+	}
+</style>
