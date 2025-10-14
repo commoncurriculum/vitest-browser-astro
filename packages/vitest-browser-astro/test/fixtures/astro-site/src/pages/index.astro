@@ -1,8 +1,9 @@
 ---
-import SimpleCard from '../components/SimpleCard.astro';
-import WithSlots from '../components/WithSlots.astro';
-import ComplexProps from '../components/ComplexProps.astro';
-import Button from '../components/Button.astro';
+import SimpleCard from "../components/SimpleCard.astro";
+import WithSlots from "../components/WithSlots.astro";
+import ComplexProps from "../components/ComplexProps.astro";
+import Button from "../components/Button.astro";
+import ReactCounter from "../components/ReactCounter";
 ---
 
 <html lang="en">
@@ -46,11 +47,17 @@ import Button from '../components/Button.astro';
 	</head>
 	<body>
 		<h1>Astro Test Fixture Site</h1>
-		<p>This is a minimal Astro site used for testing vitest-browser-astro components.</p>
+		<p>
+			This is a minimal Astro site used for testing vitest-browser-astro
+			components.
+		</p>
 
 		<section>
 			<h2>SimpleCard Component</h2>
-			<SimpleCard title="Hello World" description="This is a test card with props" />
+			<SimpleCard
+				title="Hello World"
+				description="This is a test card with props"
+			/>
 			<SimpleCard title="No Description" />
 		</section>
 
@@ -66,15 +73,20 @@ import Button from '../components/Button.astro';
 			<h2>ComplexProps Component</h2>
 			<ComplexProps
 				count={42}
-				tags={['astro', 'vitest', 'testing']}
-				config={{ enabled: true, theme: 'light' }}
-				createdAt={new Date('2024-01-01')}
+				tags={["astro", "vitest", "testing"]}
+				config={{ enabled: true, theme: "light" }}
+				createdAt={new Date("2024-01-01")}
 			/>
 		</section>
 
 		<section>
 			<h2>Button Component</h2>
 			<Button label="Click Me" />
+		</section>
+		<section>
+			<h2>WithReact Component</h2>
+			<!-- This component uses React and should be tested for hydration -->
+			<ReactCounter client:load />
 		</section>
 	</body>
 </html>

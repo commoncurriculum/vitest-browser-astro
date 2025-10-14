@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { userEvent } from "@vitest/browser/context";
-import { render } from "../src/index";
-import SimpleCard from "./fixtures/astro-site/src/components/SimpleCard.astro";
-import WithSlots from "./fixtures/astro-site/src/components/WithSlots.astro";
-import ComplexProps from "./fixtures/astro-site/src/components/ComplexProps.astro";
-import Counter from "./fixtures/astro-site/src/components/Counter.astro";
-import ToggleButton from "./fixtures/astro-site/src/components/ToggleButton.astro";
+import { render } from "vitest-browser-astro";
+import SimpleCard from "../src/components/SimpleCard.astro";
+import WithSlots from "../src/components/WithSlots.astro";
+import ComplexProps from "../src/components/ComplexProps.astro";
+import Counter from "../src/components/Counter.astro";
+import ToggleButton from "../src/components/ToggleButton.astro";
+import WithReact from "../src/components/WithReact.astro";
 
 describe("render() in browser", () => {
 	beforeEach(async () => {
@@ -382,6 +383,69 @@ describe("render() in browser", () => {
 
 				await userEvent.click(button);
 				expect(button.element().getAttribute("aria-pressed")).toBe("false");
+			});
+		});
+	});
+
+	describe.only("framework renderers", () => {
+		describe("React components", () => {
+			it("should render Astro component with React child", async () => {
+				const screen = await render(WithReact, {
+					props: {
+						initialCount: 5,
+						label: "Test Counter",
+					},
+				});
+
+				await expect
+					.element(screen.getByTestId("with-react"))
+					.toBeInTheDocument();
+				await expect
+					.element(screen.getByText("Astro Component with React"))
+					.toBeVisible();
+				await expect
+					.element(screen.getByTestId("react-counter"))
+					.toBeInTheDocument();
+			});
+
+			it("should hydrate React component with client:load", async () => {
+				const screen = await render(WithReact, {
+					props: {
+						initialCount: 10,
+						label: "Interactive Counter",
+					},
+				});
+
+				const reactLabel = screen.getByTestId("react-label");
+				const reactCount = screen.getByTestId("react-count");
+
+				await expect
+					.element(reactLabel)
+					.toHaveTextContent("Interactive Counter");
+				await expect.element(reactCount).toHaveTextContent("10");
+			});
+
+			it("should handle React component interactions", async () => {
+				const screen = await render(WithReact, {
+					props: {
+						initialCount: 0,
+					},
+				});
+
+				const count = screen.getByTestId("react-count");
+				const incrementBtn = screen.getByTestId("react-increment");
+				const decrementBtn = screen.getByTestId("react-decrement");
+
+				await expect.element(count).toHaveTextContent("0");
+
+				await userEvent.click(incrementBtn);
+				await expect.element(count).toHaveTextContent("1");
+
+				await userEvent.click(incrementBtn);
+				await expect.element(count).toHaveTextContent("2");
+
+				await userEvent.click(decrementBtn);
+				await expect.element(count).toHaveTextContent("1");
 			});
 		});
 	});

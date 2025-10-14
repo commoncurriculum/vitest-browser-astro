@@ -64,6 +64,8 @@ export async function render(
 		options.slots,
 	);
 
+	console.log(html);
+
 	// Inject the HTML into the browser DOM
 	return injectHTML(html, {
 		container: options.container,

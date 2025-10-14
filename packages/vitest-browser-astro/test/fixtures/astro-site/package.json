@@ -9,6 +9,15 @@
 		"preview": "astro preview"
 	},
 	"dependencies": {
-		"astro": "^5.14.4"
+		"@astrojs/react": "^4.4.0",
+		"astro": "^5.14.4",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"vitest-browser-astro": "workspace:*"
+	},
+	"devDependencies": {
+		"@vitest/browser": "^3.2.4",
+		"@playwright/test": "^1.49.0",
+		"vitest": "^3.2.4"
 	}
 }

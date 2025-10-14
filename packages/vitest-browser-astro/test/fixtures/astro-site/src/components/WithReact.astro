@@ -1,0 +1,28 @@
+---
+import ReactCounter from './ReactCounter.tsx';
+
+interface Props {
+	initialCount?: number;
+	label?: string;
+}
+
+const { initialCount = 0, label = 'React Counter' } = Astro.props;
+---
+
+<div class="with-react" data-testid="with-react">
+	<h1>Astro Component with React</h1>
+	<ReactCounter client:load initialCount={initialCount} label={label} />
+</div>
+
+<style>
+	.with-react {
+		padding: 1rem;
+		border: 2px solid #61dafb;
+		border-radius: 8px;
+	}
+
+	h1 {
+		color: #61dafb;
+		margin: 0 0 1rem 0;
+	}
+</style>
