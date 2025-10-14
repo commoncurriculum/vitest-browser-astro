@@ -1,12 +1,12 @@
 {
-	"name": "@ascorbic/workspace",
+	"name": "vitest-browser-astro-workspace",
 	"private": true,
 	"version": "1.0.0",
-	"description": "",
+	"description": "Vitest browser mode renderer for Astro",
 	"scripts": {
-		"check": "pnpm run --filter @ascorbic/* check",
-		"test": "pnpm run --filter @ascorbic/* test",
-		"build": "pnpm run --filter @ascorbic/* build",
+		"check": "pnpm run --filter vitest-browser-astro check",
+		"test": "pnpm run --filter vitest-browser-astro test",
+		"build": "pnpm run --filter vitest-browser-astro build",
 		"format": "prettier --write ."
 	},
 	"keywords": [],

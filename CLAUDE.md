@@ -2,30 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## ⚠️ Template Setup Required
-
-**This is currently a template repository.** If you see this message, you need to set up a new project by updating the following:
-
-1. **Package names**: Update `@ascorbic/example` in all `package.json` files to your new package name
-2. **Repository URLs**: Update git repository URLs in `package.json` files
-3. **README files**: Update README.md files with your project information
-4. **Test files**: Rename `packages/example/test/hello.test.ts` to a more appropriate test name
-5. **Package directory**: Rename `packages/example/` to your actual package name
-6. **Workspace name**: Update the workspace name in the root `package.json`
-7. **GitHub Secrets**: Set up required secrets in GitHub repository settings:
-   - `APP_PRIVATE_KEY` - GitHub App private key for release workflow
-   - `APP_ID` - GitHub App ID for release workflow  
-   - `CLAUDE_CODE_OAUTH_TOKEN` - Claude Code OAuth token for PR assistant
-8. **npm Trusted Publishing**: Configure trusted publishing on npmjs.com for your packages to enable OIDC authentication (no NPM_TOKEN needed)
-
-After setup, remove this section from CLAUDE.md.
-
 ## Repository Structure
 
-This is a monorepo library template using pnpm workspaces with the following structure:
+This is a monorepo using pnpm workspaces with the following structure:
 
 - **Root**: Workspace configuration and shared tooling
-- **packages/**: Individual library packages (currently contains `example` package)
+- **packages/**: Individual library packages (contains `vitest-browser-astro` package)
 - **demos/**: Demo applications and examples
 
 ## Commands

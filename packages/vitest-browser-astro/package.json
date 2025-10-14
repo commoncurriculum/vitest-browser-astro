@@ -1,7 +1,7 @@
 {
-  "name": "@ascorbic/example",
+  "name": "vitest-browser-astro",
   "version": "0.0.0",
-  "description": "",
+  "description": "Vitest browser mode renderer for Astro",
   "type": "module",
   "main": "dist/index.js",
   "files": [
@@ -26,11 +26,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+github.com:ascorbic/library-template.git",
-    "directory": "packages/example"
+    "url": "git+github.com:ascorbic/vitest-browser-astro.git",
+    "directory": "packages/vitest-browser-astro"
   },
-  "homepage": "https://github.com/ascorbic/library-template",
-  "keywords": [],
+  "homepage": "https://github.com/ascorbic/vitest-browser-astro",
+  "keywords": ["vitest", "browser", "astro", "testing"],
   "author": "Matt Kane",
   "license": "MIT"
 }

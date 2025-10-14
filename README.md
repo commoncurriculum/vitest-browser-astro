@@ -1,3 +1,3 @@
-## Library template
+# vitest-browser-astro
 
-This is a template for a library monorepo.
+Vitest browser mode renderer for Astro components.
