@@ -1,6 +1,7 @@
 import { commands } from '@vitest/browser/context';
 import { beforeEach } from 'vitest';
 import { stringify } from 'devalue';
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 import { cleanup, injectHTML } from './pure';
 import type { AstroComponentMetadata, RenderOptions, RenderResult } from './types';
 
@@ -31,11 +32,14 @@ export { cleanup, injectHTML } from './pure';
  * ```
  */
 export async function render(
-	component: AstroComponentMetadata,
+	component: AstroComponentFactory | AstroComponentMetadata,
 	options: RenderOptions = {},
 ): Promise<RenderResult> {
+	// Cast to metadata object - at runtime this will be our transformed metadata
+	const metadata = component as unknown as AstroComponentMetadata;
+
 	// Validate that this is an Astro component metadata object
-	if (!component || !component.__astroComponent) {
+	if (!metadata || !metadata.__astroComponent) {
 		throw new Error(
 			'Not an Astro component. Make sure you imported an .astro file and the vitest-browser-astro plugin is configured.',
 		);
@@ -46,8 +50,8 @@ export async function render(
 
 	// Call the browser command to render in Node.js
 	const { html } = await commands.renderAstro(
-		component.__path,
-		component.__name,
+		metadata.__path,
+		metadata.__name,
 		serializedProps,
 		options.slots,
 	);
