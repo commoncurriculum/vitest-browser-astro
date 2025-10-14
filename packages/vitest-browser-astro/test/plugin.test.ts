@@ -7,17 +7,24 @@ describe('astroRenderer plugin', () => {
 		expect(plugin.name).toBe('vitest:astro-renderer');
 	});
 
-	it('should enforce "pre" to run before other plugins', () => {
+	it('should enforce "post" to run after Astro transforms', () => {
 		const plugin = astroRenderer();
-		expect(plugin.enforce).toBe('pre');
+		expect(plugin.enforce).toBe('post');
 	});
 
-	describe('load hook', () => {
-		it('should intercept .astro file imports', async () => {
+	it('should have config hook', () => {
+		const plugin = astroRenderer();
+		expect(plugin.config).toBeTypeOf('function');
+	});
+
+	describe('transform hook', () => {
+		it('should intercept browser imports of .astro files', async () => {
 			const plugin = astroRenderer();
 			const id = '/path/to/Component.astro';
+			const code = '/* some astro transformed code */';
+			const options = { ssr: false };
 
-			const result = await plugin.load?.(id);
+			const result = await plugin.transform?.(code, id, options);
 
 			expect(result).toBeTruthy();
 			expect(typeof result).toBe('string');
@@ -29,57 +36,74 @@ describe('astroRenderer plugin', () => {
 		it('should include the full path in metadata', async () => {
 			const plugin = astroRenderer();
 			const id = '/absolute/path/to/Card.astro';
+			const code = '/* code */';
+			const options = { ssr: false };
 
-			const result = await plugin.load?.(id);
+			const result = await plugin.transform?.(code, id, options);
 
 			expect(result).toContain(JSON.stringify(id));
 		});
 
-		it('should NOT intercept non-.astro files', async () => {
-			const plugin = astroRenderer();
-
-			expect(await plugin.load?.('/path/to/file.ts')).toBeNull();
-			expect(await plugin.load?.('/path/to/file.tsx')).toBeNull();
-			expect(await plugin.load?.('/path/to/file.js')).toBeNull();
-			expect(await plugin.load?.('/path/to/file.jsx')).toBeNull();
-		});
-
-		it('should return valid JavaScript code', async () => {
+		it('should NOT intercept SSR imports of .astro files', async () => {
 			const plugin = astroRenderer();
 			const id = '/path/to/Component.astro';
+			const code = '/* code */';
+			const options = { ssr: true };
 
-			const result = await plugin.load?.(id);
+			const result = await plugin.transform?.(code, id, options);
 
-			// Should not throw when parsed
-			expect(() => new Function(result as string)).not.toThrow();
+			expect(result).toBeNull();
+		});
+
+		it('should NOT intercept non-.astro files', async () => {
+			const plugin = astroRenderer();
+			const code = '/* code */';
+			const options = { ssr: false };
+
+			expect(await plugin.transform?.(code, '/path/to/file.ts', options)).toBeNull();
+			expect(await plugin.transform?.(code, '/path/to/file.tsx', options)).toBeNull();
+			expect(await plugin.transform?.(code, '/path/to/file.js', options)).toBeNull();
+			expect(await plugin.transform?.(code, '/path/to/file.jsx', options)).toBeNull();
 		});
 	});
 
 	describe('generated metadata object', () => {
 		it('should be a valid export default statement', async () => {
 			const plugin = astroRenderer();
-			const result = await plugin.load?.('/path/to/Component.astro');
+			const code = '/* code */';
+			const options = { ssr: false };
+
+			const result = await plugin.transform?.(code, '/path/to/Component.astro', options);
 
 			expect(result).toContain('export default');
 		});
 
 		it('should have __astroComponent flag', async () => {
 			const plugin = astroRenderer();
-			const result = await plugin.load?.('/path/to/Component.astro');
+			const code = '/* code */';
+			const options = { ssr: false };
+
+			const result = await plugin.transform?.(code, '/path/to/Component.astro', options);
 
 			expect(result).toMatch(/__astroComponent:\s*true/);
 		});
 
 		it('should have __path property', async () => {
 			const plugin = astroRenderer();
-			const result = await plugin.load?.('/path/to/Component.astro');
+			const code = '/* code */';
+			const options = { ssr: false };
+
+			const result = await plugin.transform?.(code, '/path/to/Component.astro', options);
 
 			expect(result).toMatch(/__path:\s*"/);
 		});
 
 		it('should have __name property set to "default"', async () => {
 			const plugin = astroRenderer();
-			const result = await plugin.load?.('/path/to/Component.astro');
+			const code = '/* code */';
+			const options = { ssr: false };
+
+			const result = await plugin.transform?.(code, '/path/to/Component.astro', options);
 
 			expect(result).toMatch(/__name:\s*"default"/);
 		});

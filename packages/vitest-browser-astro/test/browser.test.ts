@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '../src/index';
-import SimpleCard from './fixtures/SimpleCard.astro';
-import WithSlots from './fixtures/WithSlots.astro';
-import ComplexProps from './fixtures/ComplexProps.astro';
+import SimpleCard from './fixtures/astro-site/src/components/SimpleCard.astro';
+import WithSlots from './fixtures/astro-site/src/components/WithSlots.astro';
+import ComplexProps from './fixtures/astro-site/src/components/ComplexProps.astro';
 
 describe('render() in browser', () => {
 	beforeEach(async () => {
@@ -74,9 +74,8 @@ describe('render() in browser', () => {
 				},
 			});
 
-			const tagsList = screen.getByTestId('tags');
-			await expect.element(tagsList).toBeInTheDocument();
-			expect(tagsList.querySelectorAll('li')).toHaveLength(3);
+			await expect.element(screen.getByTestId('tags')).toBeInTheDocument();
+			expect(screen.container.querySelectorAll('[data-testid="tags"] li')).toHaveLength(3);
 		});
 
 		it('should handle nested object props', async () => {
