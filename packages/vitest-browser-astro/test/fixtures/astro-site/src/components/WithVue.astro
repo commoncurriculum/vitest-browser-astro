@@ -1,0 +1,15 @@
+---
+import VueCounter from "./VueCounter.vue";
+
+interface Props {
+	initialCount?: number;
+	label?: string;
+}
+
+const { initialCount = 0, label = "Vue Counter" } = Astro.props;
+---
+
+<div class="with-vue" data-testid="with-vue">
+	<h1>Astro Component with Vue</h1>
+	<VueCounter client:load initialCount={initialCount} label={label} />
+</div>

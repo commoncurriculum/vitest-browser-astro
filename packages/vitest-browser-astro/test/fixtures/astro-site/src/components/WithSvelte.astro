@@ -1,0 +1,15 @@
+---
+import SvelteCounter from "./SvelteCounter.svelte";
+
+interface Props {
+	initialCount?: number;
+	label?: string;
+}
+
+const { initialCount = 0, label = "Svelte Counter" } = Astro.props;
+---
+
+<div class="with-svelte" data-testid="with-svelte">
+	<h1>Astro Component with Svelte</h1>
+	<SvelteCounter client:load initialCount={initialCount} label={label} />
+</div>

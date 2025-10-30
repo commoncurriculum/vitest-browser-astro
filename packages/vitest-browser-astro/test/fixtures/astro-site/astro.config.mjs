@@ -1,13 +1,12 @@
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
+import vue from "@astrojs/vue";
+import svelte from "@astrojs/svelte";
 
 export default defineConfig({
-	// Minimal config for testing
-	integrations: [react()],
-	vite: {
-		ssr: {
-			// Exclude Vitest browser files from SSR processing
-			noExternal: [],
-		},
-	},
+	integrations: [
+		react({ include: ["**/React*.{tsx,astro}"] }),
+		vue(),
+		svelte(),
+	],
 });

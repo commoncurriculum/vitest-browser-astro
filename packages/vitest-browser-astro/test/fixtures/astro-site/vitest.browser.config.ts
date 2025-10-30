@@ -5,12 +5,21 @@ import { astroRenderer } from "vitest-browser-astro/plugin";
 export default getViteConfig({
 	plugins: [
 		astroRenderer({
-			serverRenderers: [{ module: "@astrojs/react/server.js" }],
+			serverRenderers: [
+				{ module: "@astrojs/react/server.js" },
+				{ module: "@astrojs/vue/server.js" },
+				{ module: "@astrojs/svelte/server.js" },
+			],
 			clientRenderers: [
 				{ name: "@astrojs/react", entrypoint: "@astrojs/react/client.js" },
+				{ name: "@astrojs/vue", entrypoint: "@astrojs/vue/client.js" },
+				{ name: "@astrojs/svelte", entrypoint: "@astrojs/svelte/client.js" },
 			],
 		}),
 	],
+	optimizeDeps: {
+		include: ["react", "react-dom", "react-dom/client"],
+	},
 	test: {
 		// Browser integration tests
 		include: ["test/**/*.test.ts"],

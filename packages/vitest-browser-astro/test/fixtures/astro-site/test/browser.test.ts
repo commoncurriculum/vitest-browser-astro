@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { userEvent } from "@vitest/browser/context";
-import { render } from "vitest-browser-astro";
+import { render, waitForHydration } from "vitest-browser-astro";
 import SimpleCard from "../src/components/SimpleCard.astro";
 import WithSlots from "../src/components/WithSlots.astro";
 import ComplexProps from "../src/components/ComplexProps.astro";
 import Counter from "../src/components/Counter.astro";
 import ToggleButton from "../src/components/ToggleButton.astro";
 import WithReact from "../src/components/WithReact.astro";
+import WithVue from "../src/components/WithVue.astro";
+import WithSvelte from "../src/components/WithSvelte.astro";
 
 describe("render() in browser", () => {
 	beforeEach(async () => {
@@ -275,7 +277,7 @@ describe("render() in browser", () => {
 				await expect.element(count).toHaveTextContent("2");
 			});
 
-			it.skip("should decrement count when decrement button clicked", async () => {
+			it("should decrement count when decrement button clicked", async () => {
 				const screen = await render(Counter, {
 					props: { initialCount: 5 },
 				});
@@ -292,7 +294,7 @@ describe("render() in browser", () => {
 				await expect.element(count).toHaveTextContent("3");
 			});
 
-			it.skip("should reset to initial count when reset button clicked", async () => {
+			it("should reset to initial count when reset button clicked", async () => {
 				const screen = await render(Counter, {
 					props: { initialCount: 10 },
 				});
@@ -344,7 +346,7 @@ describe("render() in browser", () => {
 				expect(button.element().getAttribute("aria-pressed")).toBe("true");
 			});
 
-			it.skip("should toggle state when button clicked", async () => {
+			it("should toggle state when button clicked", async () => {
 				const screen = await render(ToggleButton, {
 					props: {
 						label: "Toggle Me",
@@ -367,7 +369,7 @@ describe("render() in browser", () => {
 				await expect.element(state).toHaveTextContent("ON");
 			});
 
-			it.skip("should update aria-pressed attribute when toggled", async () => {
+			it("should update aria-pressed attribute when toggled", async () => {
 				const screen = await render(ToggleButton, {
 					props: {
 						defaultState: false,
@@ -386,67 +388,182 @@ describe("render() in browser", () => {
 			});
 		});
 	});
+});
 
-	describe.only("framework renderers", () => {
-		describe("React components", () => {
-			it("should render Astro component with React child", async () => {
-				const screen = await render(WithReact, {
-					props: {
-						initialCount: 5,
-						label: "Test Counter",
-					},
-				});
-
-				await expect
-					.element(screen.getByTestId("with-react"))
-					.toBeInTheDocument();
-				await expect
-					.element(screen.getByText("Astro Component with React"))
-					.toBeVisible();
-				await expect
-					.element(screen.getByTestId("react-counter"))
-					.toBeInTheDocument();
-			});
-
-			it("should hydrate React component with client:load", async () => {
-				const screen = await render(WithReact, {
-					props: {
-						initialCount: 10,
-						label: "Interactive Counter",
-					},
-				});
-
-				const reactLabel = screen.getByTestId("react-label");
-				const reactCount = screen.getByTestId("react-count");
-
-				await expect
-					.element(reactLabel)
-					.toHaveTextContent("Interactive Counter");
-				await expect.element(reactCount).toHaveTextContent("10");
-			});
-
-			it("should handle React component interactions", async () => {
-				const screen = await render(WithReact, {
-					props: {
-						initialCount: 0,
-					},
-				});
-
-				const count = screen.getByTestId("react-count");
-				const incrementBtn = screen.getByTestId("react-increment");
-				const decrementBtn = screen.getByTestId("react-decrement");
-
-				await expect.element(count).toHaveTextContent("0");
-
-				await userEvent.click(incrementBtn);
-				await expect.element(count).toHaveTextContent("1");
-
-				await userEvent.click(incrementBtn);
-				await expect.element(count).toHaveTextContent("2");
-
-				await userEvent.click(decrementBtn);
-				await expect.element(count).toHaveTextContent("1");
-			});
+describe("React components", () => {
+	it("should render Astro component with React child", async () => {
+		const screen = await render(WithReact, {
+			props: {
+				initialCount: 5,
+				label: "Test Counter",
+			},
 		});
+
+		await expect.element(screen.getByTestId("with-react")).toBeInTheDocument();
+		await expect
+			.element(screen.getByText("Astro Component with React"))
+			.toBeVisible();
+		await expect
+			.element(screen.getByTestId("react-counter"))
+			.toBeInTheDocument();
+	});
+
+	it("should hydrate React component with client:load", async () => {
+		const screen = await render(WithReact, {
+			props: {
+				initialCount: 10,
+				label: "Interactive Counter",
+			},
+		});
+
+		const reactLabel = screen.getByTestId("react-label");
+		const reactCount = screen.getByTestId("react-count");
+
+		await expect.element(reactLabel).toHaveTextContent("Interactive Counter");
+		await expect.element(reactCount).toHaveTextContent("10");
+	});
+
+	it("should handle React component interactions", async () => {
+		const screen = await render(WithReact, {
+			props: {
+				initialCount: 0,
+			},
+		});
+
+		const count = screen.getByTestId("react-count");
+		const incrementBtn = screen.getByTestId("react-increment");
+		const decrementBtn = screen.getByTestId("react-decrement");
+
+		await expect.element(count).toHaveTextContent("0");
+
+		// Wait for hydration to complete before interacting
+		await waitForHydration(screen.container);
+
+		await userEvent.click(incrementBtn);
+		await expect.element(count).toHaveTextContent("1");
+
+		await userEvent.click(incrementBtn);
+		await expect.element(count).toHaveTextContent("2");
+
+		await userEvent.click(decrementBtn);
+		await expect.element(count).toHaveTextContent("1");
+	});
+});
+
+describe("Vue components", () => {
+	it("should render Astro component with Vue child", async () => {
+		const screen = await render(WithVue, {
+			props: {
+				initialCount: 5,
+				label: "Test Counter",
+			},
+		});
+
+		await expect.element(screen.getByTestId("with-vue")).toBeInTheDocument();
+		await expect
+			.element(screen.getByText("Astro Component with Vue"))
+			.toBeVisible();
+		await expect.element(screen.getByTestId("vue-counter")).toBeInTheDocument();
+	});
+
+	it("should hydrate Vue component with client:load", async () => {
+		const screen = await render(WithVue, {
+			props: {
+				initialCount: 10,
+				label: "Interactive Counter",
+			},
+		});
+
+		const vueLabel = screen.getByTestId("vue-label");
+		const vueCount = screen.getByTestId("vue-count");
+
+		await expect.element(vueLabel).toHaveTextContent("Interactive Counter");
+		await expect.element(vueCount).toHaveTextContent("10");
+	});
+
+	it("should handle Vue component interactions", async () => {
+		const screen = await render(WithVue, {
+			props: {
+				initialCount: 0,
+			},
+		});
+
+		const count = screen.getByTestId("vue-count");
+		const incrementBtn = screen.getByTestId("vue-increment");
+		const decrementBtn = screen.getByTestId("vue-decrement");
+
+		await expect.element(count).toHaveTextContent("0");
+
+		// Wait for hydration to complete before interacting
+		await waitForHydration(screen.container);
+
+		await userEvent.click(incrementBtn);
+		await expect.element(count).toHaveTextContent("1");
+
+		await userEvent.click(incrementBtn);
+		await expect.element(count).toHaveTextContent("2");
+
+		await userEvent.click(decrementBtn);
+		await expect.element(count).toHaveTextContent("1");
+	});
+});
+
+describe("Svelte components", () => {
+	it("should render Astro component with Svelte child", async () => {
+		const screen = await render(WithSvelte, {
+			props: {
+				initialCount: 5,
+				label: "Test Counter",
+			},
+		});
+
+		await expect.element(screen.getByTestId("with-svelte")).toBeInTheDocument();
+		await expect
+			.element(screen.getByText("Astro Component with Svelte"))
+			.toBeVisible();
+		await expect
+			.element(screen.getByTestId("svelte-counter"))
+			.toBeInTheDocument();
+	});
+
+	it("should hydrate Svelte component with client:load", async () => {
+		const screen = await render(WithSvelte, {
+			props: {
+				initialCount: 10,
+				label: "Interactive Counter",
+			},
+		});
+
+		const svelteLabel = screen.getByTestId("svelte-label");
+		const svelteCount = screen.getByTestId("svelte-count");
+
+		await expect.element(svelteLabel).toHaveTextContent("Interactive Counter");
+		await expect.element(svelteCount).toHaveTextContent("10");
+	});
+
+	it("should handle Svelte component interactions", async () => {
+		const screen = await render(WithSvelte, {
+			props: {
+				initialCount: 0,
+			},
+		});
+
+		const count = screen.getByTestId("svelte-count");
+		const incrementBtn = screen.getByTestId("svelte-increment");
+		const decrementBtn = screen.getByTestId("svelte-decrement");
+
+		await expect.element(count).toHaveTextContent("0");
+
+		// Wait for hydration to complete before interacting
+		await waitForHydration(screen.container);
+
+		await userEvent.click(incrementBtn);
+		await expect.element(count).toHaveTextContent("1");
+
+		await userEvent.click(incrementBtn);
+		await expect.element(count).toHaveTextContent("2");
+
+		await userEvent.click(decrementBtn);
+		await expect.element(count).toHaveTextContent("1");
 	});
 });

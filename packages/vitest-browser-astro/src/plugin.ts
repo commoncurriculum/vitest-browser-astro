@@ -111,85 +111,68 @@ const VALID_ID_PREFIX = `/@id/`;
  * Vite plugin that intercepts .astro imports and provides browser command
  * Returns array of two plugins: one for pre-processing, one for post-processing
  */
-export function astroRenderer(options: AstroRendererOptions = {}): Plugin[] {
+export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 	const { serverRenderers = [], clientRenderers = [] } = options;
 	let renderAstroCommand: RenderAstroCommand | null = null;
 	let container: AstroContainer | null = null;
 
-	return [
-		{
-			name: "vitest:astro-renderer:pre",
-			enforce: "pre",
+	return {
+		name: "vitest:astro-renderer",
+		enforce: "post",
 
-			async transform(code, id, options) {
-				// For SSR loads of .astro files, inject astro-head-inject comment at the top
-				if (id.endsWith(".astro") && options?.ssr) {
-					// Add the comment at the very top of the compiled JS
-					return `// astro-head-inject\n${code}`;
-				}
-				return null;
-			},
+		async configureServer(server) {
+			// Create Astro container once during initialization
+			container = await AstroContainer.create({
+				resolve: async (id) => {
+					const resolved = await server.pluginContainer.resolveId(
+						id,
+						undefined,
+					);
+					if (resolved && isAbsolute(resolved?.id)) {
+						return `/@fs${resolved.id}`;
+					}
+					return `/@id/${resolved?.id ?? id}`;
+				},
+			});
+			// Create container with renderers during server startup
+			renderAstroCommand = await createRenderAstroCommand(
+				serverRenderers,
+				clientRenderers,
+				server,
+				container,
+			);
 		},
-		{
-			name: "vitest:astro-renderer",
-			enforce: "post",
 
-			async configureServer(server) {
-				// Create Astro container once during initialization
-				container = await AstroContainer.create({
-					resolve: async (id) => {
-						console.log("Resolving:", id);
-						const resolved = await server.pluginContainer.resolveId(
-							id,
-							undefined,
-						);
-						console.log("Resolved to:", resolved);
-						if (resolved && isAbsolute(resolved?.id)) {
-							return `/@fs${resolved.id}`;
-						}
-						return `/@id/${resolved?.id ?? id}`;
-					},
-				});
-				// Create container with renderers during server startup
-				renderAstroCommand = await createRenderAstroCommand(
-					serverRenderers,
-					clientRenderers,
-					server,
-					container,
-				);
-			},
-
-			config() {
-				return {
-					test: {
-						browser: {
-							commands: {
-								renderAstro: ((...args) => {
-									if (!renderAstroCommand) {
-										throw new Error("renderAstroCommand not initialized");
-									}
-									return renderAstroCommand(...args);
-								}) as RenderAstroCommand,
-							},
+		config() {
+			return {
+				test: {
+					browser: {
+						commands: {
+							renderAstro: ((...args) => {
+								if (!renderAstroCommand) {
+									throw new Error("renderAstroCommand not initialized");
+								}
+								return renderAstroCommand(...args);
+							}) as RenderAstroCommand,
 						},
 					},
-				};
-			},
+				},
+			};
+		},
 
-			async transform(_code, id, options) {
-				// Only intercept browser imports of .astro files (after Astro has processed them)
-				if (id.endsWith(".astro") && !options?.ssr) {
-					// Replace entire transformed code with metadata object
-					return `
+		async transform(_code, id, options) {
+			// Only intercept browser imports of .astro files (after Astro has processed them)
+			if (id.endsWith(".astro") && !options?.ssr) {
+				// Replace entire transformed code with metadata object
+				return `
 export default {
 	__astroComponent: true,
 	__path: ${JSON.stringify(id)},
 	__name: "default",
 };
 					`.trim();
-				}
-				return null;
-			},
+			}
+			return null;
 		},
-	];
+	};
 }

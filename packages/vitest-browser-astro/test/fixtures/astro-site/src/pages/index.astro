@@ -2,7 +2,6 @@
 import SimpleCard from "../components/SimpleCard.astro";
 import WithSlots from "../components/WithSlots.astro";
 import ComplexProps from "../components/ComplexProps.astro";
-import Button from "../components/Button.astro";
 import ReactCounter from "../components/ReactCounter";
 ---
 
@@ -78,14 +77,8 @@ import ReactCounter from "../components/ReactCounter";
 				createdAt={new Date("2024-01-01")}
 			/>
 		</section>
-
-		<section>
-			<h2>Button Component</h2>
-			<Button label="Click Me" />
-		</section>
 		<section>
 			<h2>WithReact Component</h2>
-			<!-- This component uses React and should be tested for hydration -->
 			<ReactCounter client:load />
 		</section>
 	</body>

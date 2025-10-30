@@ -9,15 +9,13 @@ import type {
 	RenderResult,
 } from "./types";
 
-// Export types
 export type {
 	AstroComponentMetadata,
 	RenderOptions,
 	RenderResult,
 } from "./types";
 
-// Export utilities
-export { cleanup, injectHTML } from "./pure";
+export { cleanup, waitForHydration } from "./pure";
 
 /**
  * Renders an Astro component in the browser using Vitest browser mode
@@ -47,7 +45,7 @@ export async function render(
 	const metadata = component as unknown as AstroComponentMetadata;
 
 	// Validate that this is an Astro component metadata object
-	if (!metadata || !metadata.__astroComponent) {
+	if (!metadata?.__astroComponent) {
 		throw new Error(
 			"Not an Astro component. Make sure you imported an .astro file and the vitest-browser-astro plugin is configured.",
 		);
@@ -63,8 +61,6 @@ export async function render(
 		serializedProps,
 		options.slots,
 	);
-
-	console.log(html);
 
 	// Inject the HTML into the browser DOM
 	return injectHTML(html, {
