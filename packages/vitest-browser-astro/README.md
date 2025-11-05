@@ -2,7 +2,7 @@
 
 Test Astro components in real browsers with [Vitest Browser Mode](https://vitest.dev/guide/browser/).
 
-Astro components render server-side using the Container API. This library enables browser testing by rendering components on the server and injecting the HTML into the browser DOM. Tests run with real browser APIs.
+Astro components render server-side using the [Container API](https://docs.astro.build/en/reference/container-reference/). This library enables browser testing by rendering components on the server and injecting the HTML into the browser DOM. Tests run with real browser APIs.
 
 ## Installation
 
@@ -43,6 +43,8 @@ export default getViteConfig({
 });
 ```
 
+For Astro pages that contain framework components (React, Vue, etc.), add renderers using `getContainerRenderer()` from your framework integration packages - see [Plugin options](#plugin-options).
+
 Write a test file:
 
 ```ts
@@ -68,34 +70,30 @@ Run tests:
 npx vitest
 ```
 
+See the [test fixture](https://github.com/ascorbic/vitest-browser-astro/tree/main/packages/vitest-browser-astro/test/fixtures/astro-site) for a complete working example.
+
 ## Configuration
 
 ### Plugin options
 
-The `astroRenderer` plugin accepts optional configuration for framework support:
+The `astroRenderer` plugin uses the [Astro Container API](https://docs.astro.build/en/reference/container-reference/) (experimental) for framework support. Configure it with `getContainerRenderer()` from your framework integration packages:
 
 ```ts
+import { getContainerRenderer as getReactRenderer } from "@astrojs/react";
+import { getContainerRenderer as getVueRenderer } from "@astrojs/vue";
+
 astroRenderer({
-	serverRenderers: [
-		{ module: "@astrojs/react/server.js" },
-		{ module: "@astrojs/vue/server.js" },
-		{ module: "@astrojs/svelte/server.js" },
-	],
-	clientRenderers: [
-		{ name: "@astrojs/react", entrypoint: "@astrojs/react/client.js" },
-		{ name: "@astrojs/vue", entrypoint: "@astrojs/vue/client.js" },
-		{ name: "@astrojs/svelte", entrypoint: "@astrojs/svelte/client.js" },
-	],
+	renderers: [getReactRenderer(), getVueRenderer()],
 });
 ```
 
 **Options:**
 
-- `serverRenderers` - Array of server renderer configurations for SSR. Each entry requires:
-  - `module` - Path to the server renderer module
-- `clientRenderers` - Array of client renderer configurations for hydration. Each entry requires:
-  - `name` - Integration name
-  - `entrypoint` - Path to the client renderer entrypoint
+- `renderers` - Array of framework renderers obtained from `getContainerRenderer()`. Pass these if your Astro components use framework integrations.
+
+**Note:** Only one JSX-based framework (React, Preact, or Solid) can be used at a time. Non-JSX frameworks (Vue, Svelte) can be combined with any JSX framework.
+
+See the [Container API renderers documentation](https://docs.astro.build/en/reference/container-reference/#renderers-option) for more details.
 
 ### Browser providers
 
@@ -245,7 +243,29 @@ export default defineConfig({
 });
 ```
 
-Configure both server and client renderers in `vitest.config.ts` (see [Configuration](#plugin-options) for details).
+Configure framework renderers in `vitest.config.ts` using `getContainerRenderer()`:
+
+```ts
+import { getViteConfig } from "astro/config";
+import { astroRenderer } from "vitest-browser-astro/plugin";
+import { getContainerRenderer as getReactRenderer } from "@astrojs/react";
+
+export default getViteConfig({
+	plugins: [
+		astroRenderer({
+			renderers: [getReactRenderer()],
+		}),
+	],
+	test: {
+		browser: {
+			enabled: true,
+			name: "chromium",
+			provider: "playwright",
+			headless: true,
+		},
+	},
+});
+```
 
 ### Testing hydrated components
 
@@ -368,7 +388,7 @@ Then restart the TypeScript server.
 
 ### Framework components not hydrating
 
-1. Add the framework to both `serverRenderers` and `clientRenderers` in plugin options
+1. Add the framework renderer using `getContainerRenderer()` in plugin options
 2. Add the corresponding integration to `astro.config.mjs`
 3. Use `client:load` directive on framework components
 4. Call `waitForHydration()` before interacting with the component

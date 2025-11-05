@@ -2,11 +2,9 @@ import { isAbsolute, resolve } from "node:path";
 import type { Plugin } from "vite";
 import type { BrowserCommand } from "vitest/node";
 import type { ViteDevServer } from "vite";
-import {
-	experimental_AstroContainer as AstroContainer,
-	type AddClientRenderer,
-} from "astro/container";
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { parse } from "devalue";
+import type { AstroRenderer, SSRLoadedRenderer } from "astro";
 
 type RenderAstroCommand = BrowserCommand<
 	[
@@ -18,34 +16,49 @@ type RenderAstroCommand = BrowserCommand<
 >;
 
 /**
- * Server renderer configuration - path to renderer module
+ * Loads renderer modules using Vite's SSR loader and adds them to the container
+ * Mimics the behavior of loadRenderers() from astro:container
  */
-interface ServerRendererConfig {
-	/** Path to server renderer module (e.g., '@astrojs/react/server.js') */
-	module: string;
+async function loadRenderers(
+	renderers: AstroRenderer[],
+	server: ViteDevServer,
+) {
+	const loadedRenderers = await Promise.all(
+		renderers.map(async (renderer) => {
+			const mod = await server.ssrLoadModule(
+				renderer.serverEntrypoint.toString(),
+			);
+			let { clientEntrypoint, name } = renderer;
+			if (
+				!clientEntrypoint &&
+				name.startsWith("@astrojs/") &&
+				name !== "@astrojs/mdx"
+			) {
+				// Hacky workaround because astro < 5.16.0 doesn't provide clientEntrypoint for official renderers
+				clientEntrypoint = renderer.serverEntrypoint
+					.toString()
+					.replace("/server.js", "/client.js");
+			}
+			if (typeof mod.default !== "undefined") {
+				return {
+					...renderer,
+					clientEntrypoint,
+					ssr: mod.default,
+				} as SSRLoadedRenderer;
+			}
+			return undefined;
+		}),
+	);
+
+	return loadedRenderers.filter((r): r is SSRLoadedRenderer => Boolean(r));
 }
 
 /**
  * Creates the browser command with a pre-configured container
  */
 async function createRenderAstroCommand(
-	serverRenderers: ServerRendererConfig[],
-	clientRenderers: AddClientRenderer[],
-	viteServer: ViteDevServer,
 	container: AstroContainer,
 ): Promise<RenderAstroCommand> {
-	// Load and add server renderers using Vite's SSR loader (must be added before client renderers)
-	for (const { module: modulePath } of serverRenderers) {
-		const rendererModule = await viteServer.ssrLoadModule(modulePath);
-		const renderer = rendererModule.default || rendererModule;
-		container.addServerRenderer({ renderer });
-	}
-
-	// Add client renderers for hydration
-	for (const clientRenderer of clientRenderers) {
-		container.addClientRenderer(clientRenderer);
-	}
-
 	return async (
 		ctx,
 		componentPath: string,
@@ -53,28 +66,25 @@ async function createRenderAstroCommand(
 		serializedProps?: string,
 		slots?: Record<string, string>,
 	) => {
-		const projectRoot = process.cwd();
+		const projectRoot = ctx.project.config.root;
 		const absolutePath = resolve(projectRoot, componentPath);
 
 		// Use Vitest's Vite server which already has Astro configured
 		const viteServer = ctx.project.vite;
 
-		// Load the component directly (astro-head-inject will be auto-injected during SSR)
 		const componentModule = await viteServer.ssrLoadModule(absolutePath);
 
-		// Get the component
 		const Component = componentModule.default || componentModule[componentName];
 
 		if (!Component) {
 			throw new Error(
-				`Component not found for ${absolutePath}. Available exports: ${Object.keys(componentModule).join(", ")}`,
+				`Component ${componentName} not found for ${absolutePath}. Available exports: ${Object.keys(componentModule).join(", ")}`,
 			);
 		}
 
 		// Deserialize props using devalue to restore Dates, RegExps, etc.
 		const props = serializedProps ? parse(serializedProps) : undefined;
 
-		// Render the component (which will include scripts due to astro-head-inject)
 		const html = await container.renderToString(Component, {
 			props,
 			slots,
@@ -90,39 +100,32 @@ async function createRenderAstroCommand(
  */
 export interface AstroRendererOptions {
 	/**
-	 * Server renderers for SSR (React, Vue, Svelte, etc.)
-	 * Specify module paths - they will be loaded using Vite's SSR loader
+	 * Framework renderers for SSR and hydration
+	 * Use getContainerRenderer() from your framework integration packages
 	 * @example
-	 * serverRenderers: [{ module: '@astrojs/react/server.js' }]
+	 * import { getContainerRenderer as reactRenderer } from '@astrojs/react';
+	 * import { getContainerRenderer as vueRenderer } from '@astrojs/vue';
+	 *
+	 * renderers: [reactRenderer(), vueRenderer()]
 	 */
-	serverRenderers?: ServerRendererConfig[];
-
-	/**
-	 * Client renderers for hydration
-	 * Specify the integration name and client entrypoint
-	 * @example
-	 * clientRenderers: [{ name: '@astrojs/react', entrypoint: '@astrojs/react/client.js' }]
-	 */
-	clientRenderers?: AddClientRenderer[];
+	renderers?: AstroRenderer[];
 }
-const VALID_ID_PREFIX = `/@id/`;
 
 /**
  * Vite plugin that intercepts .astro imports and provides browser command
  * Returns array of two plugins: one for pre-processing, one for post-processing
  */
 export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
-	const { serverRenderers = [], clientRenderers = [] } = options;
 	let renderAstroCommand: RenderAstroCommand | null = null;
-	let container: AstroContainer | null = null;
 
 	return {
 		name: "vitest:astro-renderer",
 		enforce: "post",
 
 		async configureServer(server) {
-			// Create Astro container once during initialization
-			container = await AstroContainer.create({
+			const renderers = await loadRenderers(options.renderers || [], server);
+			const container = await AstroContainer.create({
+				renderers,
 				resolve: async (id) => {
 					const resolved = await server.pluginContainer.resolveId(
 						id,
@@ -134,13 +137,9 @@ export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 					return `/@id/${resolved?.id ?? id}`;
 				},
 			});
-			// Create container with renderers during server startup
-			renderAstroCommand = await createRenderAstroCommand(
-				serverRenderers,
-				clientRenderers,
-				server,
-				container,
-			);
+
+			// Create browser command
+			renderAstroCommand = await createRenderAstroCommand(container);
 		},
 
 		config() {
