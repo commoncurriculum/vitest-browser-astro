@@ -51,3 +51,4 @@ Uses strict TypeScript configuration with:
 - Module: preserve (for bundler compatibility)
 - Strict mode with additional safety checks (`noUncheckedIndexedAccess`, `noImplicitOverride`)
 - Library-focused settings (declaration files, declaration maps)
+- run pnpm format after every edit

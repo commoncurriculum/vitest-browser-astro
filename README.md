@@ -1,3 +1,1 @@
-# vitest-browser-astro
-
-Vitest browser mode renderer for Astro components.
+packages/vitest-browser-astro/README.md

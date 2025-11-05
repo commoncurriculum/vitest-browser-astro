@@ -4,33 +4,71 @@
   "description": "Vitest browser mode renderer for Astro",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "default": "./dist/plugin.js"
+    },
+    "./pure": {
+      "types": "./dist/pure.d.ts",
+      "default": "./dist/pure.js"
+    }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --dts --clean",
-    "dev": "tsdown src/index.ts --format esm --dts --watch",
+    "build": "tsdown src/index.ts src/plugin.ts src/pure.ts --format esm --dts --clean",
+    "dev": "tsdown src/index.ts src/plugin.ts src/pure.ts --format esm --dts --watch",
     "prepublishOnly": "node --run build",
-    "check": "publint && attw --pack --ignore-rules=cjs-resolves-to-esm",
-    "test": "vitest"
+    "check": "publint && attw --pack --ignore-rules=cjs-resolves-to-esm --profile=node16",
+    "test": "vitest run",
+    "test:browser": "cd test/fixtures/astro-site && vitest run --config vitest.browser.config.ts",
+    "test:all": "pnpm test && pnpm test:browser",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@vitest/browser": "^3.2.4",
+    "devalue": "^5.3.2"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@types/feedparser": "^2.2.8",
+    "@astrojs/react": "^4.4.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.18.10",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "astro": "^5.14.4",
     "publint": "^0.3.14",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "tsdown": "^0.15.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^6.0.11",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "astro": "^5.x",
+    "vite": "^6.x",
+    "vitest": "^3.x"
   },
   "repository": {
     "type": "git",
-    "url": "git+github.com:ascorbic/vitest-browser-astro.git",
+    "url": "git+https://github.com/ascorbic/vitest-browser-astro.git",
     "directory": "packages/vitest-browser-astro"
   },
   "homepage": "https://github.com/ascorbic/vitest-browser-astro",
-  "keywords": ["vitest", "browser", "astro", "testing"],
+  "keywords": [
+    "vitest",
+    "browser",
+    "astro",
+    "testing"
+  ],
   "author": "Matt Kane",
   "license": "MIT"
 }
