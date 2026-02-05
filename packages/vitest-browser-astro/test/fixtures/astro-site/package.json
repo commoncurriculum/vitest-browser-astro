@@ -25,6 +25,7 @@
 	"devDependencies": {
 		"@playwright/test": "^1.49.0",
 		"@vitest/browser-playwright": "^4.0.0",
+		"vite-plugin-cjs-interop": "^2.4.1",
 		"vitest": "^4.0.0"
 	}
 }

@@ -13,7 +13,6 @@ export default getViteConfig({
 		}),
 	],
 	test: {
-		// Browser integration tests
 		include: ["test/**/*.test.ts"],
 		browser: {
 			enabled: true,
