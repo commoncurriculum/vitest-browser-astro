@@ -263,7 +263,7 @@ await waitForHydration(screen);
 await waitForHydration(screen.getByTestId("header"));
 ```
 
-Skip `waitForHydration()` for components without client directives. 
+Skip `waitForHydration()` for components without client directives.
 
 ### Supported frameworks
 
