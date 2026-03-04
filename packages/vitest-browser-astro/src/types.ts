@@ -17,6 +17,8 @@ export interface RenderOptions {
 	slots?: Record<string, string>;
 	container?: HTMLElement;
 	baseElement?: HTMLElement;
+	/** CSS collected from SSR module graph, injected as a <style> tag */
+	css?: string;
 }
 
 /**

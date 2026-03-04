@@ -95,6 +95,14 @@ export function injectHTML(
 		options.container,
 	);
 
+	// Inject CSS collected from SSR module graph (CSS modules, scoped styles)
+	if (options.css) {
+		const style = document.createElement("style");
+		style.setAttribute("data-vitest-astro-css", "");
+		style.textContent = options.css;
+		container.appendChild(style);
+	}
+
 	setHTMLWithScripts(container, html);
 
 	return createRenderResult(container, baseElement);

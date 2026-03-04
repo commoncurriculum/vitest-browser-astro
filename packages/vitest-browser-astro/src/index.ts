@@ -55,17 +55,18 @@ export async function render(
 	const serializedProps = options.props ? stringify(options.props) : undefined;
 
 	// Call the browser command to render in Node.js
-	const { html } = await commands.renderAstro(
+	const { html, css } = await commands.renderAstro(
 		metadata.__path,
 		metadata.__name,
 		serializedProps,
 		options.slots,
 	);
 
-	// Inject the HTML into the browser DOM
+	// Inject the HTML and CSS into the browser DOM
 	return injectHTML(html, {
 		container: options.container,
 		baseElement: options.baseElement,
+		css,
 	});
 }
 
@@ -82,6 +83,6 @@ declare module "vitest/browser" {
 			componentName: string,
 			serializedProps?: string,
 			slots?: Record<string, string>,
-		) => Promise<{ html: string }>;
+		) => Promise<{ html: string; css?: string }>;
 	}
 }

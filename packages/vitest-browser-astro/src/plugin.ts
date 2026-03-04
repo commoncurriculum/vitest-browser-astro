@@ -1,4 +1,5 @@
 import { isAbsolute, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 import type { Plugin } from "vite";
 import type { BrowserCommand } from "vitest/node";
 import type { ViteDevServer } from "vite";
@@ -54,6 +55,78 @@ async function loadRenderers(
 }
 
 /**
+ * Walk the SSR module graph from an entry point and collect CSS files.
+ * For each CSS module found, read the raw CSS and rewrite class names to
+ * match the hashed names used by the SSR Proxy (e.g., _className_hash).
+ *
+ * Why not use transformRequest? In Vitest's context, transformRequest returns
+ * the SSR transform (a JS Proxy for class name mappings), not the browser
+ * transform with actual CSS. So we read the raw CSS and apply the same hash.
+ */
+async function collectSsrCss(
+	server: ViteDevServer,
+	entryId: string,
+): Promise<string> {
+	const cssIds = new Set<string>();
+	const visited = new Set<string>();
+
+	function walk(id: string) {
+		if (visited.has(id)) return;
+		visited.add(id);
+
+		const mod = server.moduleGraph.getModuleById(id);
+		if (!mod) return;
+
+		if (mod.id && /\.css($|\?)/.test(mod.id)) {
+			cssIds.add(mod.id);
+		}
+
+		for (const dep of mod.ssrImportedModules) {
+			if (dep.id) walk(dep.id);
+		}
+	}
+
+	walk(entryId);
+
+	const chunks: string[] = [];
+	for (const cssId of cssIds) {
+		try {
+			// Get the file path (strip query params)
+			const filePath = cssId.split("?")[0];
+
+			// Detect the hash suffix by calling the SSR module's Proxy
+			const ssrMod = await server.ssrLoadModule(cssId);
+			const classMap = ssrMod?.default;
+			if (!classMap || typeof classMap !== "object") continue;
+
+			// Get any class name to extract the hash suffix
+			// The SSR Proxy returns `_${style}_${hash}` for any property access
+			const sampleName = classMap["__probe__"] as string;
+			// Extract hash: "__probe__" → "_probe___hash" → hash is after the last _
+			const hashMatch = sampleName?.match(/_([a-f0-9]+)$/);
+			if (!hashMatch) continue;
+			const hash = hashMatch[1];
+
+			// Read raw CSS file
+			const rawCss = await readFile(filePath, "utf-8");
+
+			// Rewrite CSS class selectors: .className → ._className_hash
+			// This matches Vite's CSS module hashing convention
+			const rewritten = rawCss.replace(
+				/\.([a-zA-Z_][\w-]*)/g,
+				(_, name) => `._${name}_${hash}`,
+			);
+
+			chunks.push(rewritten);
+		} catch {
+			// Skip files that can't be processed
+		}
+	}
+
+	return chunks.join("\n");
+}
+
+/**
  * Creates the browser command with a pre-configured container
  */
 async function createRenderAstroCommand(
@@ -91,7 +164,13 @@ async function createRenderAstroCommand(
 			request: new Request("http://localhost:4321/"),
 		});
 
-		return { html };
+		// Collect CSS from the Vite module graph for all modules loaded during SSR.
+		// Astro Container API's renderToString doesn't include component CSS
+		// (CSS modules, scoped styles). Walk the module graph starting from the
+		// component and collect CSS content via Vite's transform pipeline.
+		const css = await collectSsrCss(viteServer, absolutePath);
+
+		return { html, css };
 	};
 }
 
