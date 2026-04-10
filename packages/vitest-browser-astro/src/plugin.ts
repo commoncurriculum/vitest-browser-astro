@@ -1,5 +1,4 @@
 import { isAbsolute, resolve } from "node:path";
-import { readFile } from "node:fs/promises";
 import type { Plugin } from "vite";
 import type { BrowserCommand } from "vitest/node";
 import type { ViteDevServer } from "vite";
@@ -18,7 +17,6 @@ type RenderAstroCommand = BrowserCommand<
 
 /**
  * Loads renderer modules using Vite's SSR loader and adds them to the container
- * Mimics the behavior of loadRenderers() from astro:container
  */
 async function loadRenderers(
 	renderers: AstroRenderer[],
@@ -35,7 +33,6 @@ async function loadRenderers(
 				name.startsWith("@astrojs/") &&
 				name !== "@astrojs/mdx"
 			) {
-				// Hacky workaround because astro < 5.16.0 doesn't provide clientEntrypoint for official renderers
 				clientEntrypoint = renderer.serverEntrypoint
 					.toString()
 					.replace("/server.js", "/client.js");
@@ -55,10 +52,16 @@ async function loadRenderers(
 }
 
 /**
- * Walk the SSR module graph from an entry point and collect CSS files.
- * For each CSS module found, run it through the Vite plugin transform
- * pipeline (which processes Tailwind @variant, theme(), etc.), then
- * rewrite class names to match the hashed names used by the SSR Proxy.
+ * Walk the SSR module graph from an entry point and collect CSS.
+ *
+ * For each .css dependency, call `server.transformRequest(id)` — this returns
+ * a JS module that assigns the fully-processed CSS to `const __vite__css = "..."`
+ * alongside the CSS module class exports. Both come from the same lightningcss
+ * pass, so the hash in the CSS (including grid-template-areas, grid-area, and
+ * selectors) matches the hash returned by the Astro container's SSR render.
+ *
+ * The host vitest config must set `test.css: true` to bypass vitest's
+ * css-disable plugin, which would otherwise replace the CSS with a Proxy stub.
  */
 async function collectSsrCss(
 	server: ViteDevServer,
@@ -88,41 +91,29 @@ async function collectSsrCss(
 	const chunks: string[] = [];
 	for (const cssId of cssIds) {
 		try {
-			// Get the file path (strip query params)
-			const filePath = cssId.split("?")[0];
+			const result = await server.transformRequest(cssId);
+			if (!result?.code) continue;
 
-			// Detect the hash suffix by calling the SSR module's Proxy
-			const ssrMod = await server.ssrLoadModule(cssId);
-			const classMap = ssrMod?.default;
-			if (!classMap || typeof classMap !== "object") continue;
-
-			// Get any class name to extract the hash suffix
-			// The SSR Proxy returns `_${style}_${hash}` for any property access
-			const sampleName = classMap["__probe__"] as string;
-			// Extract hash: "__probe__" → "_probe___hash" → hash is after the last _
-			const hashMatch = sampleName?.match(/_([a-f0-9]+)$/);
-			if (!hashMatch) continue;
-			const hash = hashMatch[1];
-
-			// Check if a Vite plugin cached the Tailwind-processed CSS.
-			// The cache-tailwind-css-modules plugin (configured in the host
-			// project's vitest config) stores post-Tailwind output in a
-			// global map. This avoids needing to call the Tailwind compiler
-			// directly or fight vitest's css-disable plugin.
-			const processedCache = (globalThis as any).__processedCssModules as
-				| Map<string, string>
-				| undefined;
-			const processedCss =
-				processedCache?.get(filePath) ??
-				(await readFile(filePath, "utf-8"));
-
-			const rewritten = processedCss.replace(
-				/(?<=^|[{};,\n])\s*\.([a-zA-Z_][\w-]*)/gm,
-				(match, className) =>
-					match.replace(`.${className}`, `._${className}_${hash}`),
+			// The bare CSS transform produces a JS module containing:
+			//   const __vite__css = "...processed css...";
+			//   (0,__vite_ssr_import_1__.updateStyle)(__vite__id, __vite__css);
+			// Extract the CSS string literal. Using [\s\S] to span newlines.
+			const match = result.code.match(
+				/const __vite__css = "((?:[^"\\]|\\[\s\S])*)"/,
 			);
+			if (!match) continue;
 
-			chunks.push(rewritten);
+			// Unescape the JS string literal back into raw CSS.
+			// Order matters: unescape \\ last so earlier backslash sequences
+			// don't get re-interpreted.
+			const css = match[1]
+				.replace(/\\n/g, "\n")
+				.replace(/\\r/g, "\r")
+				.replace(/\\t/g, "\t")
+				.replace(/\\"/g, '"')
+				.replace(/\\\\/g, "\\");
+
+			chunks.push(css);
 		} catch {
 			// Skip files that can't be processed
 		}
@@ -147,11 +138,8 @@ async function createRenderAstroCommand(
 		const projectRoot = ctx.project.config.root;
 		const absolutePath = resolve(projectRoot, componentPath);
 
-		// Use Vitest's Vite server which already has Astro configured
 		const viteServer = ctx.project.vite;
-
 		const componentModule = await viteServer.ssrLoadModule(absolutePath);
-
 		const Component = componentModule.default || componentModule[componentName];
 
 		if (!Component) {
@@ -160,7 +148,6 @@ async function createRenderAstroCommand(
 			);
 		}
 
-		// Deserialize props using devalue to restore Dates, RegExps, etc.
 		const props = serializedProps ? parse(serializedProps) : undefined;
 
 		const html = await container.renderToString(Component, {
@@ -169,36 +156,16 @@ async function createRenderAstroCommand(
 			request: new Request("http://localhost:4321/"),
 		});
 
-		// Collect CSS from the Vite module graph for all modules loaded during SSR.
-		// Astro Container API's renderToString doesn't include component CSS
-		// (CSS modules, scoped styles). Walk the module graph starting from the
-		// component and collect CSS content via Vite's transform pipeline.
 		const css = await collectSsrCss(viteServer, absolutePath);
 
 		return { html, css };
 	};
 }
 
-/**
- * Options for configuring the Astro renderer plugin
- */
 export interface AstroRendererOptions {
-	/**
-	 * Framework renderers for SSR and hydration
-	 * Use getContainerRenderer() from your framework integration packages
-	 * @example
-	 * import { getContainerRenderer as reactRenderer } from '@astrojs/react';
-	 * import { getContainerRenderer as vueRenderer } from '@astrojs/vue';
-	 *
-	 * renderers: [reactRenderer(), vueRenderer()]
-	 */
 	renderers?: AstroRenderer[];
 }
 
-/**
- * Vite plugin that intercepts .astro imports and provides browser command
- * Returns array of two plugins: one for pre-processing, one for post-processing
- */
 export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 	let renderAstroCommand: RenderAstroCommand | null = null;
 
@@ -222,7 +189,6 @@ export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 				},
 			});
 
-			// Create browser command
 			renderAstroCommand = await createRenderAstroCommand(container);
 		},
 
@@ -247,10 +213,6 @@ export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 		},
 
 		configResolved(config) {
-			// Override Astro's ssr.noExternal: true to allow CJS packages to be externalized
-			// Astro sets noExternal: true which forces all packages through Vite's Module Runner
-			// But CJS packages fail in the Module Runner's ESModulesEvaluator
-			// We need to set noExternal to a specific list instead of true
 			const cjsPackages = [
 				"react",
 				"react-dom",
@@ -262,13 +224,11 @@ export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 				"prismjs",
 			];
 
-			// If noExternal is true, convert it to array excluding CJS packages
 			if (config.ssr.noExternal === true) {
 				// @ts-expect-error - mutating readonly config to fix CJS compatibility
 				config.ssr.noExternal = [];
 			}
 
-			// Ensure CJS packages are in the external list
 			const external = config.ssr.external;
 			if (Array.isArray(external)) {
 				for (const pkg of cjsPackages) {
@@ -281,9 +241,7 @@ export function astroRenderer(options: AstroRendererOptions = {}): Plugin {
 		},
 
 		async transform(_code, id, options) {
-			// Only intercept browser imports of .astro files (after Astro has processed them)
 			if (id.endsWith(".astro") && !options?.ssr) {
-				// Replace entire transformed code with metadata object
 				return `
 export default {
 	__astroComponent: true,
