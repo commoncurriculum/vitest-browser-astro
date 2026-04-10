@@ -56,12 +56,9 @@ async function loadRenderers(
 
 /**
  * Walk the SSR module graph from an entry point and collect CSS files.
- * For each CSS module found, read the raw CSS and rewrite class names to
- * match the hashed names used by the SSR Proxy (e.g., _className_hash).
- *
- * Why not use transformRequest? In Vitest's context, transformRequest returns
- * the SSR transform (a JS Proxy for class name mappings), not the browser
- * transform with actual CSS. So we read the raw CSS and apply the same hash.
+ * For each CSS module found, run it through the Vite plugin transform
+ * pipeline (which processes Tailwind @variant, theme(), etc.), then
+ * rewrite class names to match the hashed names used by the SSR Proxy.
  */
 async function collectSsrCss(
 	server: ViteDevServer,
@@ -107,14 +104,22 @@ async function collectSsrCss(
 			if (!hashMatch) continue;
 			const hash = hashMatch[1];
 
-			// Read raw CSS file
-			const rawCss = await readFile(filePath, "utf-8");
+			// Check if a Vite plugin cached the Tailwind-processed CSS.
+			// The cache-tailwind-css-modules plugin (configured in the host
+			// project's vitest config) stores post-Tailwind output in a
+			// global map. This avoids needing to call the Tailwind compiler
+			// directly or fight vitest's css-disable plugin.
+			const processedCache = (globalThis as any).__processedCssModules as
+				| Map<string, string>
+				| undefined;
+			const processedCss =
+				processedCache?.get(filePath) ??
+				(await readFile(filePath, "utf-8"));
 
-			// Rewrite CSS class selectors: .className → ._className_hash
-			// This matches Vite's CSS module hashing convention
-			const rewritten = rawCss.replace(
-				/\.([a-zA-Z_][\w-]*)/g,
-				(_, name) => `._${name}_${hash}`,
+			const rewritten = processedCss.replace(
+				/(?<=^|[{};,\n])\s*\.([a-zA-Z_][\w-]*)/gm,
+				(match, className) =>
+					match.replace(`.${className}`, `._${className}_${hash}`),
 			);
 
 			chunks.push(rewritten);
